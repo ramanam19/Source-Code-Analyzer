@@ -8,8 +8,8 @@ from src.helper import clone_github_repo, load_repo, split_documents, get_embedd
 load_dotenv()
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-CHROMA_DB_PATH = "chroma_db"
-CLONED_REPO_PATH = "cloned_repo"
+CHROMA_DB_PATH = "/tmp/chroma_db"
+CLONED_REPO_PATH = "/tmp/cloned_repo"
 
 
 # ── Main Indexing Function ────────────────────────────────────────────────────
