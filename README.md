@@ -20,20 +20,35 @@ An AI-powered application that allows developers to understand any GitHub codeba
 ## 🏗️ Architecture
 
 GitHub Repo URL
+
 ↓
+
 GitPython (Clone)
+
 ↓
+
 GenericLoader (Extract .py files)
+
 ↓
+
 RecursiveCharacterTextSplitter (Context-aware chunks)
+
 ↓
+
 Gemini Embeddings (text-embedding-004)
+
 ↓
+
 ChromaDB (Vector Store)
+
 ↓
+
 Gemini 2.5 Flash LLM + ConversationSummaryMemory
+
 ↓
+
 Flask Web Interface
+
 ---
 
 ## 🛠️ Tech Stack
@@ -55,16 +70,27 @@ Flask Web Interface
 source-code-analyzer/
 
 ├── src/
+
 │   ├── init.py
+
 │   └── helper.py        # Core RAG functions
+
 ├── static/
+
 │   └── style.css        # Frontend styles
+
 ├── templates/
+
 │   └── index.html       # Web interface
+
 ├── app.py               # Flask backend
+
 ├── store_index.py       # ChromaDB indexing
+
 ├── requirements.txt     # Dependencies
+
 ├── Procfile             # Render deployment
+
 └── .env                 # API keys (not committed)
 
 ---
