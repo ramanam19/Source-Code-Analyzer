@@ -29,14 +29,23 @@ def clone_github_repo(repo_url: str, clone_path: str = "cloned_repo"):
 def load_repo(repo_path: str):
     """Load all Python files from the cloned repository."""
     print(f"Loading Python files from {repo_path}...")
+    
+    # Manually find all .py files recursively
+    from pathlib import Path
+    py_files = list(Path(repo_path).rglob("*.py"))
+    print(f"Found {len(py_files)} Python files.")
+    
+    if not py_files:
+        return []
+
     loader = GenericLoader.from_filesystem(
         repo_path,
-        glob="**/*",
+        glob="**/*.py",
         suffixes=[".py"],
-        parser=LanguageParser(language=Language.PYTHON, parser_threshold=500),
+        parser=LanguageParser(language=Language.PYTHON, parser_threshold=100),
     )
     documents = loader.load()
-    print(f"Loaded {len(documents)} Python file(s).")
+    print(f"Loaded {len(documents)} document(s).")
     return documents
 
 
