@@ -16,14 +16,19 @@ CLONED_REPO_PATH = "cloned_repo"
 def ingest_repository(repo_url: str):
     """Full pipeline: clone → load → split → embed → store in ChromaDB."""
 
-    # Step 1: Clone the repo
+    # Always remove old cloned repo and re-clone fresh
+    if os.path.exists(CLONED_REPO_PATH):
+        shutil.rmtree(CLONED_REPO_PATH)
+        print(f"Removed old cloned repo.")
+
+    # Step 1: Clone the repo fresh
     clone_github_repo(repo_url, CLONED_REPO_PATH)
 
     # Step 2: Debug — list all files found
     from pathlib import Path
     all_files = list(Path(CLONED_REPO_PATH).rglob("*.*"))
     print(f"Total files found in repo: {len(all_files)}")
-    
+
     py_files = list(Path(CLONED_REPO_PATH).rglob("*.py"))
     print(f"Python files found: {len(py_files)}")
     for f in py_files:
@@ -33,7 +38,6 @@ def ingest_repository(repo_url: str):
     documents = load_repo(CLONED_REPO_PATH)
 
     if not documents:
-        # Return file listing as error message
         ext_counts = {}
         for f in all_files:
             ext = f.suffix.lower()
@@ -59,7 +63,6 @@ def ingest_repository(repo_url: str):
     )
     print(f"Successfully stored {len(chunks)} chunks in ChromaDB!")
     return vectorstore
-
 
 # ── Cleanup Function ──────────────────────────────────────────────────────────
 def clear_repository():
