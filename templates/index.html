@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Source Code Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+            <h1>🔍 Source Code Analyzer</h1>
+            <p>Understand any GitHub codebase using AI</p>
+        </div>
+
+        <!-- Repo Input Section -->
+        <div class="repo-section">
+            <h2>📁 Load Repository</h2>
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="repoUrl"
+                    placeholder="Enter GitHub Repository URL (e.g. https://github.com/user/repo)"
+                />
+                <button id="ingestBtn" onclick="ingestRepo()">Load Repo</button>
+                <button id="clearBtn" class="clear-btn" onclick="clearRepo()">Clear</button>
+            </div>
+            <div id="repoStatus" class="status-msg"></div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="chat-section">
+            <h2>💬 Ask About the Code</h2>
+            <div class="chat-box" id="chatBox">
+                <div class="message bot-message">
+                    👋 Hello! Load a GitHub repository above, then ask me anything about the code.
+                </div>
+            </div>
+            <div class="chat-input-group">
+                <input
+                    type="text"
+                    id="questionInput"
+                    placeholder="e.g. What does the load_pdf_file function do?"
+                    onkeypress="handleKeyPress(event)"
+                />
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        async function ingestRepo() {
+            const repoUrl = document.getElementById("repoUrl").value.trim();
+            const statusDiv = document.getElementById("repoStatus");
+            const btn = document.getElementById("ingestBtn");
+
+            if (!repoUrl) {
+                statusDiv.textContent = "⚠️ Please enter a GitHub URL.";
+                statusDiv.className = "status-msg error";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "Loading...";
+            statusDiv.textContent = "⏳ Cloning and indexing repository, please wait...";
+            statusDiv.className = "status-msg loading";
+
+            try {
+                const response = await fetch("/ingest", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ repo_url: repoUrl }),
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    statusDiv.textContent = "❌ " + data.error;
+                    statusDiv.className = "status-msg error";
+                } else {
+                    statusDiv.textContent = "✅ " + data.message;
+                    statusDiv.className = "status-msg success";
+                    appendMessage("bot", "✅ Repository loaded! You can now ask questions about the code.");
+                }
+            } catch (err) {
+                statusDiv.textContent = "❌ Something went wrong: " + err.message;
+                statusDiv.className = "status-msg error";
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Load Repo";
+            }
+        }
+
+        async function clearRepo() {
+            const statusDiv = document.getElementById("repoStatus");
+            try {
+                const response = await fetch("/clear", { method: "POST" });
+                const data = await response.json();
+                statusDiv.textContent = "🗑️ " + data.message;
+                statusDiv.className = "status-msg success";
+            } catch (err) {
+                statusDiv.textContent = "❌ " + err.message;
+                statusDiv.className = "status-msg error";
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById("questionInput");
+            const question = input.value.trim();
+            if (!question) return;
+
+            appendMessage("user", question);
+            input.value = "";
+            appendMessage("bot", "⏳ Thinking...");
+
+            try {
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ question }),
+                });
+                const data = await response.json();
+                removeLastBotMessage();
+
+                if (data.error) {
+                    appendMessage("bot", "❌ " + data.error);
+                } else {
+                    appendMessage("bot", data.answer);
+                }
+            } catch (err) {
+                removeLastBotMessage();
+                appendMessage("bot", "❌ Error: " + err.message);
+            }
+        }
+
+        function appendMessage(sender, text) {
+            const chatBox = document.getElementById("chatBox");
+            const div = document.createElement("div");
+            div.className = sender === "user" ? "message user-message" : "message bot-message";
+            div.textContent = text;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function removeLastBotMessage() {
+            const chatBox = document.getElementById("chatBox");
+            const messages = chatBox.querySelectorAll(".bot-message");
+            if (messages.length > 0) {
+                messages[messages.length - 1].remove();
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") sendMessage();
+        }
+    </script>
+
+</body>
+</html>
