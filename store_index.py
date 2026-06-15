@@ -19,23 +19,38 @@ def ingest_repository(repo_url: str):
     # Step 1: Clone the repo
     clone_github_repo(repo_url, CLONED_REPO_PATH)
 
-    # Step 2: Load Python files
+    # Step 2: Debug — list all files found
+    from pathlib import Path
+    all_files = list(Path(CLONED_REPO_PATH).rglob("*.*"))
+    print(f"Total files found in repo: {len(all_files)}")
+    
+    py_files = list(Path(CLONED_REPO_PATH).rglob("*.py"))
+    print(f"Python files found: {len(py_files)}")
+    for f in py_files:
+        print(f"  → {f}")
+
+    # Step 3: Load Python files
     documents = load_repo(CLONED_REPO_PATH)
 
     if not documents:
-        print("No Python files found in the repository!")
+        # Return file listing as error message
+        ext_counts = {}
+        for f in all_files:
+            ext = f.suffix.lower()
+            ext_counts[ext] = ext_counts.get(ext, 0) + 1
+        print(f"File extensions found: {ext_counts}")
         return None
 
-    # Step 3: Split into chunks
+    # Step 4: Split into chunks
     chunks = split_documents(documents)
 
-    # Step 4: Get Gemini embeddings
+    # Step 5: Get Gemini embeddings
     embeddings = get_embeddings()
 
-    # Step 5: Store in ChromaDB
+    # Step 6: Store in ChromaDB
     print("Storing chunks in ChromaDB...")
     if os.path.exists(CHROMA_DB_PATH):
-        shutil.rmtree(CHROMA_DB_PATH)  # Clear old index
+        shutil.rmtree(CHROMA_DB_PATH)
 
     vectorstore = Chroma.from_documents(
         documents=chunks,

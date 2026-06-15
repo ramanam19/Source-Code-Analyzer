@@ -65,8 +65,7 @@ def ingest():
     try:
         vectorstore = ingest_repository(repo_url)
         if vectorstore is None:
-            return jsonify({"error": "No Python files found in repository."}), 400
-
+            return jsonify({"error": "No Python files found. Please make sure the repository contains .py files."}), 400
         qa_chain = initialize_qa_chain(vectorstore)
         return jsonify({"message": "Repository ingested successfully! You can now ask questions."})
 
