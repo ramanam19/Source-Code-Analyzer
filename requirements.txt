@@ -11,3 +11,4 @@ gitpython
 tiktoken
 python-dotenv
 gunicorn
+esprima
