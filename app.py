@@ -53,7 +53,6 @@ def index():
 
 @app.route("/ingest", methods=["POST"])
 def ingest():
-    """Clone and index a GitHub repository."""
     global vectorstore, qa_chain
 
     data = request.get_json()
@@ -63,11 +62,18 @@ def ingest():
         return jsonify({"error": "Please provide a GitHub URL."}), 400
 
     try:
-        vectorstore = ingest_repository(repo_url)
+        vectorstore, stacks = ingest_repository(repo_url)
+
         if vectorstore is None:
-            return jsonify({"error": "No Python files found. Please make sure the repository contains .py files."}), 400
+            return jsonify({"error": "No supported source files found. Supported: Python, JS/TS, Java, HTML, CSS, JSON."}), 400
+
         qa_chain = initialize_qa_chain(vectorstore)
-        return jsonify({"message": "Repository ingested successfully! You can now ask questions."})
+
+        stack_labels = [v["label"] for v in stacks.values()]
+        return jsonify({
+            "message": f"Repository indexed! Detected: {', '.join(stack_labels)}. You can now ask questions.",
+            "stacks": stacks
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
