@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
@@ -6,8 +7,53 @@ from src.helper import clone_github_repo, load_repo, split_documents, get_embedd
 
 load_dotenv()
 
-CHROMA_DB_PATH  = "/tmp/chroma_db"
+CHROMA_DB_PATH   = "/tmp/chroma_db"
 CLONED_REPO_PATH = "/tmp/cloned_repo"
+
+
+def embed_with_retry(chunks, embeddings, chroma_path, batch_size=50):
+    """Store chunks in ChromaDB in small batches with retry on 429."""
+
+    if os.path.exists(chroma_path):
+        shutil.rmtree(chroma_path)
+
+    vectorstore = None
+    total = len(chunks)
+    print(f"Embedding {total} chunks in batches of {batch_size}...")
+
+    for i in range(0, total, batch_size):
+        batch = chunks[i: i + batch_size]
+        print(f"  Batch {i // batch_size + 1} / {-(-total // batch_size)} ({len(batch)} chunks)...")
+
+        for attempt in range(5):
+            try:
+                if vectorstore is None:
+                    vectorstore = Chroma.from_documents(
+                        documents=batch,
+                        embedding=embeddings,
+                        persist_directory=chroma_path,
+                    )
+                else:
+                    vectorstore.add_documents(batch)
+                break  # success
+
+            except Exception as e:
+                err = str(e)
+                if "429" in err or "quota" in err.lower() or "rate" in err.lower():
+                    wait = 35 * (attempt + 1)
+                    print(f"  Rate limit hit. Waiting {wait}s before retry (attempt {attempt + 1}/5)...")
+                    time.sleep(wait)
+                else:
+                    raise e
+        else:
+            raise Exception("Embedding failed after 5 retries due to rate limits.")
+
+        # Small pause between batches to avoid hitting limit
+        if i + batch_size < total:
+            time.sleep(3)
+
+    print(f"Successfully stored {total} chunks in ChromaDB!")
+    return vectorstore
 
 
 def ingest_repository(repo_url: str):
@@ -28,17 +74,10 @@ def ingest_repository(repo_url: str):
     # Step 4: Split
     chunks = split_documents(documents)
 
-    # Step 5: Embed & store
+    # Step 5: Embed & store with retry
     embeddings = get_embeddings()
-    if os.path.exists(CHROMA_DB_PATH):
-        shutil.rmtree(CHROMA_DB_PATH)
+    vectorstore = embed_with_retry(chunks, embeddings, CHROMA_DB_PATH, batch_size=50)
 
-    vectorstore = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        persist_directory=CHROMA_DB_PATH,
-    )
-    print(f"Stored {len(chunks)} chunks in ChromaDB!")
     return vectorstore, stacks
 
 
